@@ -56,6 +56,7 @@
 		<link rel="stylesheet" href="css/codemirror.css">
 		<link rel="stylesheet" href="css/default.css">
 
+		<script src="js/stats.min.js"></script>
 		<script src="js/lzma.js"></script>
 		<script src='js/jquery.js'></script>
 		<script src='js/helpers.js'></script>
@@ -115,6 +116,13 @@ void main( void ) {
 		</script>
 
 		<script>
+
+
+			var stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.left = '0px';
+				stats.domElement.style.bottom = '0px';
+				document.body.appendChild( stats.domElement );
 
 			initialize_helper();
 
@@ -219,6 +227,7 @@ void main( void ) {
 						compileButton.style.visibility = 'hidden';
 						set_save_button('hidden');
 						set_parent_button('hidden');
+						stats.domElement.style.visibility = 'hidden';
 
 					} else {
 
@@ -228,6 +237,7 @@ void main( void ) {
 						compileButton.style.visibility = 'visible';
 						set_save_button('visible');
 						set_parent_button('visible');
+						stats.domElement.style.visibility = 'visible';
 
 					}
 
@@ -747,9 +757,10 @@ void main( void ) {
 			//
 
 			function animate() {
-
+				stats.begin();
 				requestAnimationFrame( animate );
 				render();
+				stats.end();
 
 			}
 
