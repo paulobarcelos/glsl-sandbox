@@ -150,9 +150,9 @@ void main( void ) {
 
 			var quality = 2, quality_levels = [ 0.5, 1, 2, 4, 8 ];
 			var toolbar, compileButton, fullscreenButton, compileTimer, errorLines = [];
-			var code, canvas, gl, buffer, currentProgram, vertexPosition,
+			var fragCode, vertCode, canvas, gl, buffer, currentProgram, vertexPosition,
 			parameters = { startTime: Date.now(), time: 0, mouseX: 0.5, mouseY: 0.5, screenWidth: 0, screenHeight: 0 },
-			frontTarget, backTarget, screenProgram, getWebGL, resizer = {}, compileOnChangeCode = true;
+			frontTarget, backTarget, screenProgram, getWebGL, fragResizer = {}, vertResizer = {}, compileOnChangeCode = true;
 
 			init();
 			if (gl) { animate(); }
@@ -211,10 +211,11 @@ void main( void ) {
 				button.textContent = 'hide code';
 				button.addEventListener( 'click', function ( event ) {
 
-					if ( code.getWrapperElement().style.visibility === 'visible' ) {
+					if ( fragCode.getWrapperElement().style.visibility === 'visible' ) {
 
 						button.textContent = 'show code';
-						code.getWrapperElement().style.visibility = 'hidden';
+						fragCode.getWrapperElement().style.visibility = 'hidden';
+						vertCode.getWrapperElement().style.visibility = 'hidden';
 						compileButton.style.visibility = 'hidden';
 						set_save_button('hidden');
 						set_parent_button('hidden');
@@ -222,7 +223,8 @@ void main( void ) {
 					} else {
 
 						button.textContent = 'hide code';
-						code.getWrapperElement().style.visibility = 'visible';
+						fragCode.getWrapperElement().style.visibility = 'visible';
+						vertCode.getWrapperElement().style.visibility = 'visible';
 						compileButton.style.visibility = 'visible';
 						set_save_button('visible');
 						set_parent_button('visible');
@@ -294,7 +296,7 @@ void main( void ) {
 				}
 
 				// initialize code editor
-				code = CodeMirror(document.body, {
+				fragCode = CodeMirror(document.body, {
 					lineNumbers: true,
 					matchBrackets: true,
 					indentWithTabs: true,
@@ -308,48 +310,106 @@ void main( void ) {
 						}
 					}
 				});
-				code.getWrapperElement().style.visibility = 'visible';
+				fragCode.getWrapperElement().style.visibility = 'visible';
 
-				resizer.offsetMouseX = 0;
-				resizer.offsetMouseY = 0;
-				resizer.isResizing = false;
-				resizer.currentWidth = 100;
-				resizer.currentHeight = 100;
-				resizer.minWidth = 100;
-				resizer.minHeight = 100;
-				resizer.maxWidth = 100;
-				resizer.maxHeight = 100;
-				resizer.element = document.createElement( 'div' );
-				resizer.element.className = 'resizer';
-				code.getWrapperElement().appendChild(resizer.element);
+				vertCode = CodeMirror(document.body, {
+					lineNumbers: true,
+					matchBrackets: true,
+					indentWithTabs: true,
+					tabSize: 8,
+					indentUnit: 8,
+					mode: "text/x-glsl",
+					onChange: function () {
+						if (compileOnChangeCode) {
+							clearTimeout(compileTimer);
+							compileTimer = setTimeout(compile, 500);
+						}
+					}
+				});
+				vertCode.getWrapperElement().style.visibility = 'visible';
 
-				resizer.element.addEventListener( 'mousedown', function ( event ) {
+				fragResizer.offsetMouseX = 0;
+				fragResizer.offsetMouseY = 0;
+				fragResizer.isResizing = false;
+				fragResizer.currentWidth = 100;
+				fragResizer.currentHeight = 100;
+				fragResizer.minWidth = 100;
+				fragResizer.minHeight = 100;
+				fragResizer.maxWidth = 100;
+				fragResizer.maxHeight = 100;
+				fragResizer.element = document.createElement( 'div' );
+				fragResizer.element.className = 'resizer';
+				fragCode.getWrapperElement().appendChild(fragResizer.element);
+
+				fragResizer.element.addEventListener( 'mousedown', function ( event ) {
 					if (event.button !== 2) {
-						resizer.offsetMouseX = event.clientX - resizer.currentWidth;
-						resizer.offsetMouseY = event.clientY - resizer.currentHeight;
-						resizer.isResizing = true;
+						fragResizer.offsetMouseX = event.clientX - fragResizer.currentWidth;
+						fragResizer.offsetMouseY = event.clientY - fragResizer.currentHeight;
+						fragResizer.isResizing = true;
 						event.preventDefault();
 					}
 				}, false );
 				
 				document.addEventListener( 'mousemove', function ( event ) {
 					var codeElement;
-					if (resizer.isResizing) {
-						resizer.currentWidth = Math.max(Math.min(event.clientX - resizer.offsetMouseX, resizer.maxWidth), resizer.minWidth);
-						resizer.currentHeight = Math.max(Math.min(event.clientY - resizer.offsetMouseY, resizer.maxHeight), resizer.minWidth);
-						codeElement = code.getWrapperElement();
-						codeElement.style.width = resizer.currentWidth + 'px';
-						codeElement.style.height = resizer.currentHeight + 'px';
-						code.refresh();
+					if (fragResizer.isResizing) {
+						fragResizer.currentWidth = Math.max(Math.min(event.clientX - fragResizer.offsetMouseX, fragResizer.maxWidth), fragResizer.minWidth);
+						fragResizer.currentHeight = Math.max(Math.min(event.clientY - fragResizer.offsetMouseY, fragResizer.maxHeight), fragResizer.minWidth);
+						codeElement = fragCode.getWrapperElement();
+						codeElement.style.width = fragResizer.currentWidth + 'px';
+						codeElement.style.height = fragResizer.currentHeight + 'px';
+						fragCode.refresh();
 					}
 				}, false );
 
 				document.addEventListener( 'mouseup', function ( event ) {
-					resizer.isResizing = false;
+					fragResizer.isResizing = false;
 				}, false );
 				
 				document.addEventListener( 'mouseleave', function ( event ) {
-					resizer.isResizing = false;
+					fragResizer.isResizing = false;
+				}, false );
+
+				vertResizer.offsetMouseX = 0;
+				vertResizer.offsetMouseY = 0;
+				vertResizer.isResizing = false;
+				vertResizer.currentWidth = 100;
+				vertResizer.currentHeight = 100;
+				vertResizer.minWidth = 100;
+				vertResizer.minHeight = 100;
+				vertResizer.maxWidth = 100;
+				vertResizer.maxHeight = 100;
+				vertResizer.element = document.createElement( 'div' );
+				vertResizer.element.className = 'resizer';
+				vertCode.getWrapperElement().appendChild(vertResizer.element);
+
+				vertResizer.element.addEventListener( 'mousedown', function ( event ) {
+					if (event.button !== 2) {
+						vertResizer.offsetMouseX = event.clientX - vertResizer.currentWidth;
+						vertResizer.offsetMouseY = event.clientY - vertResizer.currentHeight;
+						vertResizer.isResizing = true;
+						event.preventDefault();
+					}
+				}, false );
+				
+				document.addEventListener( 'mousemove', function ( event ) {
+					var codeElement;
+					if (vertResizer.isResizing) {
+						vertResizer.currentWidth = Math.max(Math.min(event.clientX - vertResizer.offsetMouseX, vertResizer.maxWidth), vertResizer.minWidth);
+						vertResizer.currentHeight = Math.max(Math.min(event.clientY - vertResizer.offsetMouseY, vertResizer.maxHeight), vertResizer.minWidth);
+						codeElement = vertCode.getWrapperElement();
+						codeElement.style.width = vertResizer.currentWidth + 'px';
+						codeElement.style.height = vertResizer.currentHeight + 'px';
+						fragCode.refresh();
+					}
+				}, false );
+
+				document.addEventListener( 'mouseup', function ( event ) {
+					vertResizer.isResizing = false;
+				}, false );
+				
+				document.addEventListener( 'mouseleave', function ( event ) {
+					vertResizer.isResizing = false;
 				}, false );
 
 				onWindowResize();
@@ -383,9 +443,10 @@ void main( void ) {
 				}
 
 				var program = gl.createProgram();
-				var fragment = code.getValue();
+				var vertex = vertCode.getValue();
+				var fragment = fragCode.getValue();
 
-				var vs = createShader( 'attribute vec3 position; void main() { gl_Position = vec4( position, 1.0 ); }', gl.VERTEX_SHADER );
+				var vs = createShader( vertex, gl.VERTEX_SHADER );
 				var fs = createShader( fragment, gl.FRAGMENT_SHADER );
 
 				if ( vs == null || fs == null ) return null;
@@ -418,7 +479,7 @@ void main( void ) {
 				if ( currentProgram ) {
 
 					gl.deleteProgram( currentProgram );
-					setURL( fragment );
+					setURL( fragment + '____' + vertex);
 
 				}
 
@@ -569,8 +630,8 @@ void main( void ) {
 
 				while (errorLines.length > 0) {
 					line = errorLines.pop();
-					code.setLineClass(line, null);
-					code.clearMarker(line);
+					fragCode.setLineClass(line, null);
+					fragCode.clearMarker(line);
 				}
 
 				gl.shaderSource( shader, src );
@@ -605,8 +666,8 @@ void main( void ) {
 							index = indexEnd + 1;
 							indexEnd = error.indexOf("ERROR: 0:", index);
 							lineError = htmlEncode((indexEnd > index) ? error.substring(index, indexEnd) : error.substring(index));
-							line = code.setMarker(lineNum - 1, '<abbr title="' + lineError + '">' + lineNum + '</abbr>', "errorMarker");
-							code.setLineClass(line, "errorLine");
+							line = fragCode.setMarker(lineNum - 1, '<abbr title="' + lineError + '">' + lineNum + '</abbr>', "errorMarker");
+							fragCode.setLineClass(line, "errorLine");
 							errorLines.push(line);
 						}
 					}
@@ -623,27 +684,47 @@ void main( void ) {
 
 			function onWindowResize( event ) {
 
-				var isMaxWidth = ((resizer.currentWidth === resizer.maxWidth) || (resizer.currentWidth === resizer.minWidth)),
-					isMaxHeight = ((resizer.currentHeight === resizer.maxHeight) || (resizer.currentHeight === resizer.minHeight));
+				var isMaxWidth = ((fragResizer.currentWidth === fragResizer.maxWidth) || (fragResizer.currentWidth === fragResizer.minWidth)),
+					isMaxHeight = ((fragResizer.currentHeight === fragResizer.maxHeight) || (fragResizer.currentHeight === fragResizer.minHeight));
 
 				toolbar.style.width = window.innerWidth - 47 + 'px';
 
-				resizer.isResizing = false;
-				resizer.maxWidth = window.innerWidth - 75;
-				resizer.maxHeight = window.innerHeight - 125;
-				if (isMaxWidth || (resizer.currentWidth > resizer.maxWidth)) {
-					resizer.currentWidth = resizer.maxWidth;
-				}
-				if (isMaxHeight || (resizer.currentHeight > resizer.maxHeight)) {
-					resizer.currentHeight = resizer.maxHeight;
-				}
-				if (resizer.currentWidth < resizer.minWidth) { resizer.currentWidth = resizer.minWidth; }
-				if (resizer.currentHeight < resizer.minHeight) { resizer.currentHeight = resizer.minHeight; }
 
-				code.getWrapperElement().style.top = '75px';
-				code.getWrapperElement().style.left = '25px';
-				code.getWrapperElement().style.width = resizer.currentWidth + 'px';
-				code.getWrapperElement().style.height = resizer.currentHeight + 'px';
+				vertResizer.isResizing = false;
+				vertResizer.maxWidth = window.innerWidth/2 - 75;
+				vertResizer.maxHeight = window.innerHeight - 125;
+				if (isMaxWidth || (vertResizer.currentWidth > vertResizer.maxWidth)) {
+					vertResizer.currentWidth = vertResizer.maxWidth;
+				}
+				if (isMaxHeight || (vertResizer.currentHeight > vertResizer.maxHeight)) {
+					vertResizer.currentHeight = vertResizer.maxHeight;
+				}
+				if (vertResizer.currentWidth < vertResizer.minWidth) { vertResizer.currentWidth = vertResizer.minWidth; }
+				if (vertResizer.currentHeight < vertResizer.minHeight) { vertResizer.currentHeight = vertResizer.minHeight; }
+
+				vertCode.getWrapperElement().style.top = '75px';
+				vertCode.getWrapperElement().style.left = '25px';
+				vertCode.getWrapperElement().style.width = vertResizer.currentWidth + 'px';
+				vertCode.getWrapperElement().style.height = vertResizer.currentHeight + 'px';
+
+				fragResizer.isResizing = false;
+				fragResizer.maxWidth = window.innerWidth/2 - 75;
+				fragResizer.maxHeight = window.innerHeight - 125;
+				if (isMaxWidth || (fragResizer.currentWidth > fragResizer.maxWidth)) {
+					fragResizer.currentWidth = fragResizer.maxWidth;
+				}
+				if (isMaxHeight || (fragResizer.currentHeight > fragResizer.maxHeight)) {
+					fragResizer.currentHeight = fragResizer.maxHeight;
+				}
+				if (fragResizer.currentWidth < fragResizer.minWidth) { fragResizer.currentWidth = fragResizer.minWidth; }
+				if (fragResizer.currentHeight < fragResizer.minHeight) { fragResizer.currentHeight = fragResizer.minHeight; }
+
+				fragCode.getWrapperElement().style.top = '75px';
+				fragCode.getWrapperElement().style.left = (window.innerWidth/2 + 25) + 'px';
+				fragCode.getWrapperElement().style.width = fragResizer.currentWidth + 'px';
+				fragCode.getWrapperElement().style.height = fragResizer.currentHeight + 'px';
+
+
 
 				canvas.width = window.innerWidth / quality;
 				canvas.height = window.innerHeight / quality;
