@@ -454,10 +454,21 @@ void main( void ) {
 				textureLabel.style.color = '#ffff00';
 				image = new Image();
 				image.onload = function(){
+					// make sure image has power of 2 dimensions
+					// if not, use a temp canvas to create it
+					var pow2Width = nextPowerOfTwo(image.width);
+					var pow2Height = nextPowerOfTwo(image.height);
+					var canvas = document.createElement('canvas');
+					var ctx = canvas.getContext('2d');
+					canvas.width = pow2Width;
+					canvas.height = pow2Height;
+					ctx.drawImage(image, 0, 0, pow2Width, pow2Height);
+
+
 					textureLabel.style.color = '#00ff00';
 					gl.bindTexture(gl.TEXTURE_2D, texture);
 					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
 					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
 					gl.generateMipmap(gl.TEXTURE_2D);
@@ -551,7 +562,7 @@ void main( void ) {
 				cacheUniformLocation( program, 'mouse' );
 				cacheUniformLocation( program, 'resolution' );
 				cacheUniformLocation( program, 'backbuffer' );
-				cacheUniformLocation( program, 'tex' );
+				cacheUniformLocation( program, 'texture' );
 
 				// Load program into GPU
 
@@ -825,7 +836,7 @@ void main( void ) {
 				gl.uniform2f( currentProgram.uniformsCache[ 'mouse' ], parameters.mouseX, parameters.mouseY );
 				gl.uniform2f( currentProgram.uniformsCache[ 'resolution' ], parameters.screenWidth, parameters.screenHeight );
 				gl.uniform1i( currentProgram.uniformsCache[ 'backbuffer' ], 0 );
-				gl.uniform1i( currentProgram.uniformsCache[ 'tex' ], 1 );
+				gl.uniform1i( currentProgram.uniformsCache[ 'texture' ], 1 );
 				
 				gl.activeTexture( gl.TEXTURE0 );
 				gl.bindTexture( gl.TEXTURE_2D, backTarget.texture );	
