@@ -693,20 +693,18 @@ void main( void ) {
 			//
 
 			function onWindowResize( event ) {
-
-				var isMaxWidth = ((fragResizer.currentWidth === fragResizer.maxWidth) || (fragResizer.currentWidth === fragResizer.minWidth)),
-					isMaxHeight = ((fragResizer.currentHeight === fragResizer.maxHeight) || (fragResizer.currentHeight === fragResizer.minHeight));
-
 				toolbar.style.width = window.innerWidth - 47 + 'px';
 
+				var isVertMaxWidth = ((vertResizer.currentWidth === vertResizer.maxWidth) || (vertResizer.currentWidth === vertResizer.minWidth)),
+					isVertMaxHeight = ((vertResizer.currentHeight === vertResizer.maxHeight) || (vertResizer.currentHeight === vertResizer.minHeight));
 
 				vertResizer.isResizing = false;
 				vertResizer.maxWidth = window.innerWidth/2 - 75;
 				vertResizer.maxHeight = window.innerHeight - 125;
-				if (isMaxWidth || (vertResizer.currentWidth > vertResizer.maxWidth)) {
+				if (isVertMaxWidth || (vertResizer.currentWidth > vertResizer.maxWidth)) {
 					vertResizer.currentWidth = vertResizer.maxWidth;
 				}
-				if (isMaxHeight || (vertResizer.currentHeight > vertResizer.maxHeight)) {
+				if (isVertMaxHeight || (vertResizer.currentHeight > vertResizer.maxHeight)) {
 					vertResizer.currentHeight = vertResizer.maxHeight;
 				}
 				if (vertResizer.currentWidth < vertResizer.minWidth) { vertResizer.currentWidth = vertResizer.minWidth; }
@@ -717,13 +715,16 @@ void main( void ) {
 				vertCode.getWrapperElement().style.width = vertResizer.currentWidth + 'px';
 				vertCode.getWrapperElement().style.height = vertResizer.currentHeight + 'px';
 
+				var isFragMaxWidth = ((fragResizer.currentWidth === fragResizer.maxWidth) || (fragResizer.currentWidth === fragResizer.minWidth)),
+					isFragMaxHeight = ((fragResizer.currentHeight === fragResizer.maxHeight) || (fragResizer.currentHeight === fragResizer.minHeight));
+
 				fragResizer.isResizing = false;
 				fragResizer.maxWidth = window.innerWidth/2 - 75;
 				fragResizer.maxHeight = window.innerHeight - 125;
-				if (isMaxWidth || (fragResizer.currentWidth > fragResizer.maxWidth)) {
+				if (isFragMaxWidth || (fragResizer.currentWidth > fragResizer.maxWidth)) {
 					fragResizer.currentWidth = fragResizer.maxWidth;
 				}
-				if (isMaxHeight || (fragResizer.currentHeight > fragResizer.maxHeight)) {
+				if (isFragMaxHeight || (fragResizer.currentHeight > fragResizer.maxHeight)) {
 					fragResizer.currentHeight = fragResizer.maxHeight;
 				}
 				if (fragResizer.currentWidth < fragResizer.minWidth) { fragResizer.currentWidth = fragResizer.minWidth; }
