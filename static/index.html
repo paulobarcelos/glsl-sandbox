@@ -157,10 +157,10 @@ void main( void ) {
 			// Greetings to Iq/RGBA! ;)
 
 			var quality = 2, quality_levels = [ 0.5, 1, 2, 4, 8 ];
-			var toolbar, compileButton, fullscreenButton, compileTimer, errorLines = [];
+			var toolbar, compileButton, fullscreenButton, compileTimer, errorLines = [], textureLabel, textureURLInput;
 			var fragCode, vertCode, canvas, gl, buffer, currentProgram, vertexPosition,
 			parameters = { startTime: Date.now(), time: 0, mouseX: 0.5, mouseY: 0.5, screenWidth: 0, screenHeight: 0 },
-			frontTarget, backTarget, screenProgram, getWebGL, fragResizer = {}, vertResizer = {}, compileOnChangeCode = true;
+			frontTarget, backTarget, screenProgram, getWebGL, fragResizer = {}, vertResizer = {}, compileOnChangeCode = true, texture;
 
 			init();
 			if (gl) { animate(); }
@@ -227,6 +227,7 @@ void main( void ) {
 						compileButton.style.visibility = 'hidden';
 						set_save_button('hidden');
 						set_parent_button('hidden');
+						textureLabel.style.visibility = 'hidden';
 						stats.domElement.style.visibility = 'hidden';
 
 					} else {
@@ -237,6 +238,7 @@ void main( void ) {
 						compileButton.style.visibility = 'visible';
 						set_save_button('visible');
 						set_parent_button('visible');
+						textureLabel.style.visibility = 'visible';
 						stats.domElement.style.visibility = 'visible';
 
 					}
@@ -272,6 +274,19 @@ void main( void ) {
 
 				}, false );
 				toolbar.appendChild( compileButton );
+
+
+				textureLabel = document.createElement( 'button' );
+				textureLabel.textContent = "texture ";				
+				toolbar.appendChild( textureLabel );
+				
+				textureURLInput = document.createElement( 'input' );
+				textureURLInput.placeholder = "Enter URL";
+				textureLabel.style.color = '#ff0000';
+				textureURLInput.addEventListener( 'keyup', function ( event ) {
+					loadTexture(textureURLInput.value, true);
+				}, false );
+				textureLabel.appendChild( textureURLInput );
 
 				// from helper.js
 				add_server_buttons();
@@ -310,8 +325,8 @@ void main( void ) {
 					lineNumbers: true,
 					matchBrackets: true,
 					indentWithTabs: true,
-					tabSize: 8,
-					indentUnit: 8,
+					tabSize: 4,
+					indentUnit: 4,
 					mode: "text/x-glsl",
 					onChange: function () {
 						if (compileOnChangeCode) {
@@ -326,8 +341,8 @@ void main( void ) {
 					lineNumbers: true,
 					matchBrackets: true,
 					indentWithTabs: true,
-					tabSize: 8,
-					indentUnit: 8,
+					tabSize: 4,
+					indentUnit: 4,
 					mode: "text/x-glsl",
 					onChange: function () {
 						if (compileOnChangeCode) {
@@ -422,12 +437,42 @@ void main( void ) {
 					vertResizer.isResizing = false;
 				}, false );
 
+				// create uniform texture
+				texture = gl.createTexture();
+
 				onWindowResize();
 				window.addEventListener( 'resize', onWindowResize, false );
 				load_url_code();
 
 				compileScreenProgram();
 
+			}
+
+			
+			function loadTexture(url, generateURLonSuccess) {
+				generateURLonSuccess = generateURLonSuccess || false;
+				textureLabel.style.color = '#ffff00';
+				image = new Image();
+				image.onload = function(){
+					textureLabel.style.color = '#00ff00';
+					gl.bindTexture(gl.TEXTURE_2D, texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+					gl.generateMipmap(gl.TEXTURE_2D);
+					gl.bindTexture(gl.TEXTURE_2D, null);
+
+					if(generateURLonSuccess) generateURL();
+				}
+				image.onerror = function(){
+					textureLabel.style.color = '#ff0000';
+				}
+				image.src = url;
+			}
+
+			function generateURL(){
+				setURL( fragCode.getValue() + '____' + vertCode.getValue() + '____' + textureURLInput.value);
 			}
 
 			function compile() {
@@ -489,7 +534,7 @@ void main( void ) {
 				if ( currentProgram ) {
 
 					gl.deleteProgram( currentProgram );
-					setURL( fragment + '____' + vertex);
+					generateURL();
 
 				}
 
@@ -506,6 +551,7 @@ void main( void ) {
 				cacheUniformLocation( program, 'mouse' );
 				cacheUniformLocation( program, 'resolution' );
 				cacheUniformLocation( program, 'backbuffer' );
+				cacheUniformLocation( program, 'tex' );
 
 				// Load program into GPU
 
@@ -779,9 +825,13 @@ void main( void ) {
 				gl.uniform2f( currentProgram.uniformsCache[ 'mouse' ], parameters.mouseX, parameters.mouseY );
 				gl.uniform2f( currentProgram.uniformsCache[ 'resolution' ], parameters.screenWidth, parameters.screenHeight );
 				gl.uniform1i( currentProgram.uniformsCache[ 'backbuffer' ], 0 );
-
+				gl.uniform1i( currentProgram.uniformsCache[ 'tex' ], 1 );
+				
 				gl.activeTexture( gl.TEXTURE0 );
-				gl.bindTexture( gl.TEXTURE_2D, backTarget.texture );
+				gl.bindTexture( gl.TEXTURE_2D, backTarget.texture );	
+
+				gl.activeTexture( gl.TEXTURE1 );
+				gl.bindTexture( gl.TEXTURE_2D, texture );				
 
 				// Render custom shader to front buffer
 
@@ -795,9 +845,9 @@ void main( void ) {
 				gl.useProgram( screenProgram );
 
 				gl.uniform2f( screenProgram.uniformsCache[ 'resolution' ], parameters.screenWidth, parameters.screenHeight );
-				gl.uniform1i( screenProgram.uniformsCache[ 'texture' ], 1 );
+				gl.uniform1i( screenProgram.uniformsCache[ 'texture' ], 2 );
 
-				gl.activeTexture( gl.TEXTURE1 );
+				gl.activeTexture( gl.TEXTURE2 );
 				gl.bindTexture( gl.TEXTURE_2D, frontTarget.texture );
 
 				// Render front buffer to screen
